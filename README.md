@@ -150,3 +150,50 @@ GRANT ALL PRIVILEGES ON jpabegin.* TO 'jpauser'@'%';
   - EntityManager#persist() 호출 시점에 테이블 사용
     - persist()할 때 테이블을 이용해서 식별자 구하고 이를 엔티티에 할당
     - INSERT 쿼리는 실행하지 않음
+
+## @Embeddable
+
+- 엔티티가 아닌 타입을 한 개 이상의 필드와 매핑할 때 사용
+  - 예: Address, Money 등 매핑
+- 엔티티의 한 속성으로 @Embeddable 적용 타입 사용
+
+```java
+@Embeddable
+public class Address {
+    @Column(name = "addr1")
+    private String address1;
+    
+    @Cplumn(name = "addr2")
+    private String address2;
+}
+
+@Entity
+public class Hotel {
+    @Id
+    @Column(name = "hotel_id")
+    private String id;
+    
+    @Embedded
+    private Address address;
+}
+```
+
+- 타입 필드가 두 개면 `Repeated column` 에러 발생
+  - 이땐 @AttributeOverrides 활용
+```java
+@Entity
+public class Employee {
+    @Id
+    private String id;
+    
+    @Embedded
+    private Address homeAddress;
+    
+    @AttributeOverrides({
+        @AttributeOverride(name = "address1", column = @Column(name = "waddr1")),
+        @AttributeOverride(name = "address2", column = @Column(name = "waddr2"))
+    })
+    @Embedded
+    private Address workAddress;
+}
+```
