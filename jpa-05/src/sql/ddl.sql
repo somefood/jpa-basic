@@ -8,7 +8,7 @@ create table jpabegin.hotel_info (
 ) engine innodb character set utf8mb4;
 
 create table jpabegin.review (
-  review_id integer not null auto_increment,
+  review_id integer not null primary key auto_increment,
   hotel_id varchar(50) not null,
   mark integer,
   writer_name varchar(20),

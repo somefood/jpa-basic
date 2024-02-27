@@ -12,7 +12,7 @@ public class ActivityLog {
             name = "log_seq_gen",
             sequenceName = "activity_seq",
             schema = "crm",
-            allocationSize = 1
+            allocationSize = 1 // 사이즈를 1초과하면 중복되게 생길 수 있음
     )
     @GeneratedValue(generator = "log_seq_gen")
     private Long id;
