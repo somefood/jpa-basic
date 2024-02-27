@@ -16,6 +16,7 @@ public class RemoveUserService {
                 throw new NoUserException();
             }
             em.remove(user);
+            // 이 시점에 다른 프로세스가 데이터를 삭제하면 익셉션 발생
             tx.commit();
         } catch(Exception ex) {
             tx.rollback();
