@@ -1,7 +1,7 @@
 create table jpabegin.doc (
   id varchar(20) not null primary key,
   title varchar(200),
-  content varchar(200),
+  content varchar(200)
 ) engine innodb character set utf8mb4;
 
 create table jpabegin.doc_prop (

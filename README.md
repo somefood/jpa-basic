@@ -210,3 +210,6 @@ public class Employee {
 - List 매핑
   - 콜렉션 테이블을 이용한 값 List 매핑
     - @ElementCollection, @CollectionTable, @OrderColumn 사용
+
+- Map 매핑
+  - @ElementCollection, @CollectionTable, @MapKeyColumn 사용
