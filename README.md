@@ -206,3 +206,7 @@ public class Employee {
 - Set 매핑
   - @ElementCollection과 @CollectionTable 사용 
   - Embeddable 타입은 equals랑 hash 메서드가 구현되어있어야함
+
+- List 매핑
+  - 콜렉션 테이블을 이용한 값 List 매핑
+    - @ElementCollection, @CollectionTable, @OrderColumn 사용
