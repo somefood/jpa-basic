@@ -213,3 +213,13 @@ public class Employee {
 
 - Map 매핑
   - @ElementCollection, @CollectionTable, @MapKeyColumn 사용
+
+- 콜렉션 주의사항
+  - JPA를 사용하면 페이징이라던가 여러 성능 문제를 마주치게 됨
+  - CQRS(Command Query Responsibility Segregation) 기법 적용
+    - 변경 기능을 위한 모델과 조회 기능을 위한 모델을 분리
+      - 변경 기능: JPA 활용
+      - 조회 기능: MyBatis/JdbcTemplate/JPA 중 알맞은 기술 사용
+    - 모든 기능을 JPA로 구현할 필요는 없음
+      - 특히 목록, 상세와 같은 조회 기능
+  - JPA로 다 하겠다는 생각은 하지말고, 명령 모델과 조회 모델을 잘 분리해서 적절한 스택을 사용해보자
