@@ -201,4 +201,8 @@ public class Employee {
 - @SecondaryTable
   - 다른 테이블에 저장된 데이터를 @Embeddable로 매핑 가능
   - 다른 테이블에 저장된 데이터가 개념적으로 밸류(값)일 때 사용
-    - 1-1 관계인 두 테이블을 매핑할 때 종종 출현
+    - 1-1 관계인 두 테이블을 매핑할 때 종종 출 
+
+- Set 매핑
+  - @ElementCollection과 @CollectionTable 사용 
+  - Embeddable 타입은 equals랑 hash 메서드가 구현되어있어야함

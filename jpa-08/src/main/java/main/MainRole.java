@@ -65,7 +65,7 @@ public class MainRole {
             tx.begin();
             Role role = em.find(Role.class, roleId);
             logger.info("role id: {}", role.getId());
-            for (String perm : role.getPermissions()) {
+            for (String perm : role.getPermissions()) { // fetch 타입이 LAZY면 이떄 LAZY 로딩 발생
                 logger.info("perm: {}", perm);
             }
             tx.commit();
