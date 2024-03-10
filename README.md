@@ -239,3 +239,40 @@ public class Employee {
     - 동일 식별자 -> 동일 객체
       - 영속 컨텍스트에 보관된 객체 조회
       - Repeatable Read 효과
+
+## JPA 기초 14 엔티티 간 1-1 단방향 연관 매핑
+
+- 연관 매핑은 진짜 필요할 때만 사용할 것
+  - 연관된 객체 탐색이 쉽다는 이유로 사용하지 말 것
+  - 조회 기능은 별도 모델을 만들어 구현 (CQRS)
+- Embeddable 매핑이 가능하다면 Embeddable 매핑 사용할 것
+- OneToOne은 EAGER fetch로 갖고 오기에 left join 해서 갖고옴
+
+```java
+@Entity
+public class MembershipCard {
+    @Id
+    private String number;
+    
+    @OneToOne
+    @JoinColumn(name = "user_email")
+    private User owner;
+}
+```
+
+- PK를 연결하려면 아래와 같이 작성
+
+```java
+@Entity
+@Table(name = "best_pick")
+public class BestPick {
+    @Id @Column("user_email")
+    private String email;
+    
+    @OneTOOne
+    @PrimaryKeyJoinColumn(name = "user_email")
+    private User user;
+    
+    private String title;
+}
+```
