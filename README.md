@@ -276,3 +276,98 @@ public class BestPick {
     private String title;
 }
 ```
+
+## JPA 기초 15 엔티티 간 N-1 단방향 연관 매핑
+
+- 연관 매핑은 진짜 필요할 때만 사용할 것
+  - 연관된 객체 탐색이 쉽다는 이유로 사용하지 말 것
+  - 조회 기능은 별도 모델을 만들어 구현 (CQRS)
+- @ManyToOne은 기본적으로 EAGER fetch이고, left join으로 갖고옴 (null일 수도 있으니)
+
+```java
+@Entity
+@Table(name = "sight_review")
+public class Review {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @ManyToOne
+    @JoinColumn(name = "sight_id")
+    private Sight sight;
+    
+    private int grade;
+    
+    private String comment;
+}
+```
+
+## JPA 기초 16 엔티티 간 1-N 단방향 연관 매핑
+
+- 연관 매핑은 진짜 필요할 때만 사용할 것
+  - 연관된 객체 탐색이 쉽다는 이유로 사용하지 말 것
+  - 조회 기능은 별도 모델을 만들어 구현 (CQRS)
+- Embeddable 매핑이 가능하다면 Embeddable 매핑 사용할 것
+- 1-N 단방향 연관 매핑
+  - 콜렉션을 사용한 매핑
+    - Set
+    - List
+    - Map
+- 저자 기준으론 10년 하면서 1-N 거의 안 썼다 함?
+
+```java
+@Entity
+@Table(name = "team")
+public class Team {
+    @Id
+    private String id;
+    
+    private String name;
+    
+    @OneToMnay
+    @JoinColumn(name = "team_id")
+    private Set<Player> players = new HashSet<>(); 
+}
+```
+
+## JPA 기초 17 영속성 전파 & 연관 고려사항
+
+### 영속성 전파
+
+- 연관된 엔티티에 영속 상태를 전파
+  - 예, 저장할 때 연관된 엔티티도 함께 저장
+- 근데 특별한 이유 없으면, 웬만하면 사용하지 말 것
+- CascadeType 사용
+  - ALL
+  - PERSIST: 저장할 때 연관된 엔티티 같이 저장
+  - MERGE
+  - REMOVE
+  - REFRESH
+  - DETACH
+
+### 연관 고려 사항
+
+- 연관 대신에 ID 값으로 참조 고려
+  - 객체 탐색이 쉽다고 연관 쓰기 없기
+- 조회는 전용 쿼리나 구현 사용 고려 (CQRS)
+- 엔티티가 아닌 밸류인지 확인
+  - 1-1, 1-N 관계에서 특히
+- 1-N 보다는 N-1 (물론 진짜 어쩔 수 없이 써야한다면)
+- 양방향 X
+
+```java
+@Entity
+@Table(name = "team")
+public class Team {
+
+    @Id
+    private String id;
+    private String name;
+    
+    @OneToMany(
+          cascade = CascadeType.PERSIST
+    )
+    @JoinColumn(name = "team_id")
+    private Set<Player> players = new HashSet<>();
+}
+```
