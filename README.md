@@ -728,3 +728,157 @@ List<User> findRecentUsers(@Param("since") LocalDateTime since, Sort sort);
 @Query("select u from User u where u.createDate > :since")
 Page<User> findRecentUsers(@Param("since") LocalDateTime since, Pageable pageable);
 ```
+
+## Spring Data JPA 04 Specification을 이용한 검색 조건 지정
+
+### Specification
+
+- Specification: 검색 조건을 생성하는 인터페이스
+  - Criteria를 이용해서 검색 조건 생성
+
+```java
+public interface Specification<T> extends Serializable {
+
+    @Nullable
+    Predicate toPredicate(Root<T> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder);
+}
+```
+
+- 리포지토리: Specification을 이용한 검색 조건 지정
+  - List<T> findAll(Specification<T> spec)
+
+```java
+public interface UserRepository extends Repository<User, String> {
+    List<User> findAll(Specification<User> spec);
+}
+```
+
+### Specification 구현/사용
+
+```java
+public class UserNameSpecification implements Specification<User> {
+    private final String value;
+    
+    public UserNameSpecification(String value) {
+        this.value = value;
+    }
+    
+    @Override
+    public Predicate toPredicate(Root<User> root, CriteriaQuery<?> query, CriteriaBuilder cb) {
+        return cb.like(root.get("name"), "%" + value + "%");
+    }
+    
+    public void main() {
+      UserNameSpecification spec = new UserNameSpecification("이름");
+      List<User> users = userRepository.findAll(spec);
+    }
+}
+```
+
+### 람다로 간결하게 구현
+
+- Specification을 구현한 클래스를 매번 만들기 보단 람다식을 이용해서 스펙 생성
+
+```java
+public class UserSpecs {
+    public static Specification<User> nameLike(String value) {
+        return (root, query, cb) -> cb.like(root.get("name"), "%" + value + "%");
+    }
+    
+    public void main() {
+        UserNameSpecification spec = UserSpecs.nameLike("이름");
+        List<User> users = userRepository.findAll(spec);
+    }
+}
+```
+
+### 검색 조건 조합
+
+- Specification의 or/and 메서드로 이용해서 조합
+
+```java
+Specification<User> nameSpec = UserSpec.nameLike("이름1");
+Specification<User> afterSpec = UserSpecs.createdAfter(LocalDateTime.now().minusHours(1));
+Specification<User> compositespec = nameSpce.and(afterSpec);
+List<User> users2 = userRepository.findAll(compositespec);
+
+Specification<User> spec3 = UserSpecs.nameLike(keyword)
+                                      .and(UserSpecs.createdAfter(dateTime));
+List<User> users3 = userRepository.findAll(spec3);
+```
+
+### 검색 조건 조합
+
+- 선택적으로 조합
+
+```java
+Specification<User> spec = Specification.where(null); // 기본 static 메소드로 빈 조건으로 일단 줌
+
+if (keyword != null && !keyword.trim().isEmpty()) {
+    spec = spec.and(UserSpecs.nameLike(keyword));
+}
+
+if (dateTime != null) {
+    spec = spec.and(UserSpecs.createdAfter(dateTime));
+}
+List<User> users = userRepository.findAll(spec);
+```
+
+### Specification + 페이징, 정렬
+
+- List<User> findAll(Specification<T> spec, Sort s)
+- Page<User> findAll(Specification<T> spec, Pageable p)
+- List<User> findAll(Specification<T> spec, Pageable p)
+
+### SpecBuilder
+
+- if절을 덜 쓰기 위한 SpecBuilder rngus
+
+```java
+Specification<User> specs = SpecBuilder.builder(User.class)
+        .ifHasText(keyword, str -> UserSpecs.nameLike(str))
+        .ifNotNull(dt, value -> UserSpecs.createdAfter(value))
+        .toSpec();
+```
+
+## Spring Data JPA 05 기타
+
+### count 메서드
+
+- long count()
+- long countByNameLike(String keyword)
+- long count(Specification<User> spec)
+
+### @Query 네티이브 쿼리
+
+- @Query 애노테이션
+  - JPQL 아닌 SQL 실행
+
+```java
+@Query(
+    value = "select * from user u where u.create_date >= date_sub(now(), interval 1 day)",
+    nativeQuery = true
+)
+List<User> findRecentUsers();
+
+@Query(
+    value = "select max(create_date) from user",
+    nativeQuery = true
+)
+LocalDateTime selectLastCreateDate();
+```
+
+### 한 개 결과 조회
+
+- User findByName(String name)
+- Optional<User> findByName(String name)
+
+- 리턴 타입이 List 아님
+- 존재하면 해당 값, 없으면 null 또는 빈 Optional
+- 조회 결과 개수가 두 개 이상이면 익셉션 발생!
+
+### 정리
+
+- Spring Data JPA로 편한 리포지토리 구현
+- 하지만 다 Spring Data JPA로 하지는 말 것
+  - MyBatis, JdbcTemplate 등 적절히 사용 (CQRS 지향)
