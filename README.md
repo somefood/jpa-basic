@@ -371,3 +371,56 @@ public class Team {
     private Set<Player> players = new HashSet<>();
 }
 ```
+
+## JPA 기초 18 JPQL 소개
+
+## JPQL
+
+- JPA Query Language
+  - SQL 쿼리와 유사
+  - 테이블 대신 엔티티 이름, 속성 사용
+  - select 별칭 from 엔티티명 별칭...
+    - select r from Review r
+    - select r from Review as r
+  - 쿼리 생성
+    - TypedQuery<T> EntityManager#createQuery(String ql, Class<T> resultClass)
+  - where + and, or, 괄호 등
+    - select r from Review r where r.hotelId = :hotelId
+    - select r from Review r where r.hotelId = ?
+    - select r from Review r where r.hotelId = :hotelId and r.mark > :minMark
+    - select p from Player p where p.position = :pos or p.team.id = :teamId
+  - 파라미터
+    - 이름 사용한 경우: query.setParameter("hotelId", "H-001")
+    - 인덱스 기반: query.setParameter(0, "H-001") -> ?에 대응
+  - order by
+    - select r from Review r order by r.id
+    - select r from Review r order by r.id asc
+    - select r from Review r order by r.id desc
+    - select p from Player p order by p.position, p.name
+    - select p from Player p order by p.team.id, p.name
+  - 비교 연산자
+    - `=, <>, > >= < <=, between, in, not in, like, not like, is null, is not null`
+  - 페이징 처리
+    - query.setFirstResult(number): 0부터 시작, 시작행
+    - query.setMaxResults(number): 최대 결과 개수
+
+### 주의
+ - 다음 경우는 JPQL 말고 일반 쿼리 사용 고려
+   - 여러 테이블 조인
+     - 레거시 테이블 조인
+   - DBMS에 특화된 쿼리 필요
+     - ex: 오라클 힌트
+   - 서브 쿼리 필요
+   - 통계, 대량 데이터 조회/처리
+ 
+```java
+class Test {
+    public static void main(String[] args) {
+        TypedQuery<Review> query = em.createQuery(
+                "select r from Review r where r.hotelId = :hotelId order by r.id desc",
+                Review.class);
+        query.setParameter("hotelId", "H-001");
+        List<Review> review = query.getResultList();
+    }
+}
+```
