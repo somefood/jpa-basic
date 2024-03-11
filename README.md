@@ -546,3 +546,185 @@ public class ArticleListView {
     private LocalDateTime writtenAt;
 }
 ```
+
+## Spring Data JPA 01 시작하기
+
+- JPA를 쌩으로 사용하지 않음
+- Spring Boot + Spring Data JPA -> (거의) 설정 없이 사용 가능
+- 자동 설정
+  - persistence.xml
+  - EntityManagerFactory
+- 스프링 연동
+  - 스프링 트랜잭션 연동
+  - EntityManager 연동
+- spring-boot-starter-data-jpa 의존
+  - 필요한 설정 자동 처리
+- 스프링 부트 설정
+- 엔티티 단위로 Repository 인터페이스를 상속 받은 인터페이스 생성
+  - 또는 그 하위 인터페이스
+- 지정한 규칙에 맞게 메서드 추가
+- 필요한 곳에 해당 인터페이스 타입을 주입해서 사용
+- Repository 인터페이스
+  - 스프링 데이터 JPA가 제공하는 특별한 타입으로
+  - 이 인터페이스를 상속한 인터페이스를 이용해 빈(bean) 객체를 생성
+```java
+// T: 엔티티 타입
+// ID: 엔티티의 식별자 타입
+public interface Repository<T, ID> {}
+
+public interface UserRepository extends Repository<User, String> {}
+```
+
+## Spring Data JPA 02 리포지터리 메서드 작성 규칙
+
+### 식별자로 엔티티 조회
+
+- findById
+  - T findById(ID id)
+    - 없으면 null
+  - Optional<T> findById(ID id)
+    - 없으면 empty Optional
+
+### 엔티티 삭제
+
+- delete
+  - void delete(T entity)
+  - void deleteById(ID id)
+    - 내부적으로 findById()로 엔티티를 조회한 뒤 delete()로 삭제
+- 삭제할 대상이 존재하지 않으면 익셉션 발생
+
+```java
+Optional<User> userOpt = userRepository.findById("email2");
+userOpt.ifPresent(user -> {
+    userRepository.delete(user);
+});
+```
+
+### 엔티티 저장 메서드
+
+- save
+  - void save(T entity)
+  - T save(T entity)
+- `User savedUser = userRepository.save(new User("a@a.com", ...))` 실행하면,
+  - 내부적으로 select ~~~ from user where user.email=? 실행하고 아래 실행
+  - insert into user (create_date, name, email) values (?, ?, ?)
+
+### save() 동작 방식
+
+- 새 엔티티면 EntityManager#persist() 실행
+- 새 엔티티가 아니면 EntityManager#merge() 실행
+- 새 엔티티인지 판단하는 기준
+  - Persistable을 구현한 엔티티
+    - isNew()로 판단
+  - @Version 속성이 있는 경우
+    - 버전 값이 null이면서 새 엔티티로 판단
+  - 식별자가 참조 타입이면
+    - 식별자가 null이면 새 엔티티로 판단
+  - 식별자가 숫자 타입이면
+    - 0이면 새 엔티티로 판단
+
+```java
+// userRepository.save(new User("a.a.com", ...) // a.acom가 참조 타입
+public class Entity { // 내가 임의로 지은거
+  public <S extends T> S save (S entity) {
+    Assert.notNull(entity, "Entity must not be null.");
+    if (this.entityInformation.isNew(entity)) {
+      this.em.persist(entity);
+      return entity;
+    } else {
+        return this.em.merge(entity);
+    }
+  }
+}
+```
+
+### 특정 조건으로 찾기
+
+- findBy프로퍼티(값): 프로퍼티가 특정 값인 대상
+  - List<User> findByName(String name)
+  - List<Hotel> findByGradeAndName(Grade g, String name)
+- 조건 비교
+  - List<User> findByNameLike(String keyword)
+  - List<User> findByCreatedAtAfter(LocalDateTime time)
+  - List<Hotel> findByYearBetween(int from, int to)
+  - LessThan, IsNull, Containing, In 등 활용
+- findAll(): 모두 조회
+
+### 주의
+
+- findBy 메서드를 남용하지 말 것, 파라미터가 3~4개 이상이면 네이밍 규칙으로 외려 헷갈림
+- 검색 조건이 단순하지 않으면 @Query, SQL, Specification/QueryDSL 사용
+
+## Spring Data JPA 03 정렬 페이징 @QUery
+
+### 정렬 1
+
+- find 메서드에 OrderBy 붙임
+  - OrderBy 뒤에 프로퍼티명 + Asc/Desc
+  - 여러 프로퍼티 지정 가능
+
+### 정렬 2
+
+- Sort 타입 사용
+- `List<User> findByNameLike(String keyword, Sort sort)`
+
+```java
+Sort sort1 = Sort.by(Sort.Order.asc("name"));
+List<User> users1 = userRepository.findByNameLike("이름%", sort1);
+// order by u.name asc
+        
+Sort sort2 = Sort.by(Sort.Order.asc("name"), Sort.Order.desc("email"));
+List<User> users2 = userRepository.findByNameLike("이름%", sort2);
+// order by u.name asc, email desc
+```
+
+### 페이징
+
+- Pageable/PageRequest 사용
+- `List<User> findByNameLike(String keyword, Pageable pageable`
+
+```java
+// page는 0부터 시작
+// 한 페이지에 10개 기준으로 두 번째 페이지 조회
+Pageable pageable = PageRequest.ofSize(10).withPage(1);
+List<User> user3 = userRepository.findByNameLike("이름%", pageable);
+
+Sort sort3 = Sort.by(Sort.Order.asc("name"), Sort.Order.desc("email"));
+Pagable pageable = PageRequest.ofSize(10).withPage(1).withSort(sort3);
+List<User> users3 = userRepository.findByNameLike("이름%", pageable);
+```
+
+### 페이징 조회 결과 Page로 구하기
+
+- Page 타입: 페이징 처리에 필요한 값을 함께 제공
+  - 전체 페이지 개수, 전체 개수 등
+  - findTop/findFirst, findTopN/findFirstN 같은 메서드도 사용 가능
+- Pageable을 사용하는 메서드의 리턴 타입을 Page로 지정하면 됨
+- `Page<User> findByEmailLike(String keyword, Pageable pageable)`
+
+```java
+Pageable pageable = PageRequest.ofSize(10).withPage(0).withSort(sort);
+Page<User> page = userRepository.findByEmailLike("email%", pageable);
+long totalElements = page.getTotalElements(); // 조건에 해당하는 전체 개수
+int totalPages = page.getTotalPages(); // 전체 페이지 개수
+List<User> content = page.getContent(); // 현재 페이지 결과 목록
+int size = page.getSize(); // 페이지 크기
+int pageNumber = page.getNumber(); // 현재 페이지
+int numberOfElements = page.getNumberOfElements(); // content의 개수
+```
+
+### @Query
+
+- 메서드 명명 규칙이 아닌 JPQL을 직접 사용
+  - 메서드 이름이 간결해짐
+
+```java
+@Query("select u from User u where u.createDate > :since order by u.createDate desc")
+List<User> findRecentUsers(@Param("since") LocalDateTime since);
+
+@Query("select u from User u where u.createDate > :since")
+List<User> findRecentUsers(@Param("since") LocalDateTime since, Sort sort);
+
+@Query("select u from User u where u.createDate > :since")
+Page<User> findRecentUsers(@Param("since") LocalDateTime since, Pageable pageable);
+```
