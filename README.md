@@ -424,3 +424,125 @@ class Test {
     }
 }
 ```
+
+## JPA 기초 20 기타 AttributeConverter, @Formula, @DynamicUpdate(@DynamicInsert), @Immutable, @Subselect
+
+### AttributeConverter 
+
+- 매핑을 지원하지 안흔 자바 타입과 DB 타입 간 변환 처리
+  - 예: boolean 타입과 char(1) 타입 간 변환
+
+```java
+public class BooleanYesNoConverter implements AttributeConverter<Boolean, String> {
+    @Override
+    public String converToDatabaseColumn(Boolean attribute) {
+        return Ojbects.equals(Boolean.TRUE, attribute) ? "Y" : "N";
+    }
+    
+    @Override
+    public Boolean convertToEntityAttribute(String dbData) {
+        return "Y".equals(dbData) ? true: false;
+    }
+}
+
+@Entity
+@Table(name = "notice")
+public class Notice {
+    @Column(name = "open_yn")
+    @Convert(converter = BooleanYesNoConverter.class)
+    private boolean opened;
+}
+```
+
+### @Formula
+
+- SQL을 이용한 속성 매핑
+  - 조회에서만 매핑 처리 (INSERT, UPDATE 매핑 대상 아님)
+  - 하이버네이트 제공 기능 (org.hibernate.annotations.Formula)
+  - 주로 DB 함수 호출, 서브 쿼리 결과를 매핑
+
+```java
+@Entity
+public class Notice {
+    
+    @Column(name = "cat")
+    private String categoryCode;
+    
+    @Formula("(select c.name from category c where c.cat_id = cat)")
+    private String categoryName;
+}
+```
+
+### 수정 쿼리의 칼럼
+
+- 수정 쿼리는 기본적으로 모든 칼럼 포함
+- notice.open() 메서드를 실행하면 true로 바뀌게 됨
+  - 이때, `update notice set cat=?, content=?, open_yn=?, title=? where notice_id=?` 형태로 다 나가게됨
+- @DynamicUpdate/@DynamicInsert
+  - @DynamicUpdate: 변경된 칼럼만 UPDATE 쿼리에 포함
+  - @DynamicInsert: null이 아닌 칼럼만 INSERT 쿼리에 포함
+    - 주의: 기본값을 사용할 수 있음 (null을 지정해야 할 경우 사용 X)
+
+```java
+@Entity
+@Table(name = "notice")
+@DynamicUpdate
+public class Notice {
+    private boolean opened;
+    
+    public void open() {
+        this.opened = true;
+    }
+}
+
+/** 바뀌는 부분만 나감
+ * update notice
+ * set open_yn=?
+ * where notice_id=?
+ */
+```
+
+### @Immutable
+
+- 변경 추적 대상에서 제외 처리
+  - 변경 추적 위한 메모리 사용 감소
+  - 주로 조회 목적으로만 사용되는 엔티티 매핑에 사용
+  - 참고:
+    - @Immutable이 적용된 엔티티도 저장은 됨
+    - 코드 수준에서 persist() 하지 않도록 주의
+
+```java
+@Entity
+@Table(name = "notice")
+@Immutable
+public class NoticeReadOnly {
+    @Id
+    @Column(name = "notice_id")
+    private Long id;
+    private String title;
+}
+```
+
+### @Subselect
+
+- select 결과를 엔티티로 매핑
+  - 수정 대상이 아니므로 @Immutable과 함께 사용
+
+```java
+@Subselect(
+    """
+    select a.article_id, a.title, w.name as writer, a.written_at
+    from article a left join writer w on a.writer_id = w.id
+    """
+)
+@Entity
+@Immutable
+public class ArticleListView {
+    @Id @Column(name = "article_id")
+    private Long id;
+    private String title;
+    private String writer;
+    @Column(name = "written_at")
+    private LocalDateTime writtenAt;
+}
+```
